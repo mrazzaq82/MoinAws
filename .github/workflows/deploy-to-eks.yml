@@ -1,0 +1,60 @@
+name: Build and Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - "Dockerfile"
+      - ".github/workflows/deploy-to-eks.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "683139589262"
+  ECR_REPOSITORY: mynginx
+  EKS_CLUSTER_NAME: ekslabcluster
+  DEPLOYMENT_NAME: mynginx
+  CONTAINER_NAME: mynginx
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::683139589262:role/github-actions-ecr-eks-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${GITHUB_SHA}
+          docker build --no-cache -t $IMAGE_URI .
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push $IMAGE_URI
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Deploy image to EKS
+        run: |
+          kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE_URI
+          kubectl rollout status deployment/$DEPLOYMENT_NAME
+          kubectl get pods -o wide
+          kubectl get svc
