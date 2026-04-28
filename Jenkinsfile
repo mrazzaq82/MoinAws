@@ -12,7 +12,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/mrazzaq82/MoinAws.git'
+               git branch: 'main', url: 'https://github.com/mrazzaq82/MoinAws.git'
             }
         }
 
