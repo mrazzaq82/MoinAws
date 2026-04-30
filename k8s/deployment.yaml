@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
       - name: mynginx
-        image: 683139589262.dkr.ecr.us-east-1.amazonaws.com/mynginx:latest
+        image: 683139589262.dkr.ecr.us-east-1.amazonaws.com/mynginx:6
         ports:
         - containerPort: 80
